@@ -1,1 +1,1 @@
-# CONFETI
+# Contrast, Stylize and Adapt: Unsupervised Contrastive Learning Framework for Domain Adaptive Semantic Segmentation
