@@ -423,6 +423,7 @@ class DACS(UDADecorator):
         ps_large_p = pseudo_prob.ge(self.pseudo_threshold).long() == 1
         ps_size = np.size(np.array(pseudo_label.cpu()))
         pseudo_weight = torch.sum(ps_large_p).item() / ps_size
+        tgt_weight = pseudo_weight
         if not self.enable_cbc:
             pseudo_weight = pseudo_weight * torch.ones(
                 pseudo_prob.shape, device=dev)
@@ -593,25 +594,26 @@ class DACS(UDADecorator):
         mix_loss.backward()
         
         # Train on tgt images
-        tgt_feat = self.get_model().extract_feat(target_img)
-        if self.aux_heads is not None and self.local_iter > 2000:
+
+        if self.aux_heads is not None and self.local_iter > 3000:
+            tgt_losses = {}
+            tgt_feat = self.get_model().extract_feat(target_img)
             tgt_map = None
             for aux_head in self.aux_heads:
                 if isinstance(aux_head, ContrastiveHead):
-                    if self.local_iter < 3000: 
-                        continue
                     prototypes = self.tgt_proto.get_proto()
                     tgt_aux_loss = aux_head.forward_train(
                         inputs=tgt_feat,
-                        seg_logits=pseudo_lbl,
+                        seg_logits=pseudo_label.unsqueeze(1),
                         domain='tgt',
                         prototypes=prototypes
-                    ) * 0.1
-                tgt_losses.update(tgt_aux_loss)
-        tgt_losses = add_prefix(tgt_losses, 'tgt')
-        tgt_loss, tgt_log_vars = self._parse_losses(tgt_losses)
-        log_vars.update(tgt_log_vars)
-        tgt_loss.backward()
+                    )
+                    tgt_losses.update(tgt_aux_loss)
+            tgt_losses = {k: v * tgt_weight for k, v in tgt_losses.items()}
+            tgt_losses = add_prefix(tgt_losses, 'tgt')
+            tgt_loss, tgt_log_vars = self._parse_losses(tgt_losses)
+            log_vars.update(tgt_log_vars)
+            tgt_loss.backward()
 
         if self.local_iter % 4000 == 0 and self.train_cut:
             if not os.path.exists('cut_checkpoints'):
