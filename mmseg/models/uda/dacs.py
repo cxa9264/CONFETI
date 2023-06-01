@@ -591,6 +591,27 @@ class DACS(UDADecorator):
         mix_loss, mix_log_vars = self._parse_losses(mix_losses)
         log_vars.update(mix_log_vars)
         mix_loss.backward()
+        
+        # Train on tgt images
+        tgt_feat = self.get_model().extract_feat(target_img)
+        if self.aux_heads is not None and self.local_iter > 2000:
+            tgt_map = None
+            for aux_head in self.aux_heads:
+                if isinstance(aux_head, ContrastiveHead):
+                    if self.local_iter < 3000: 
+                        continue
+                    prototypes = self.tgt_proto.get_proto()
+                    tgt_aux_loss = aux_head.forward_train(
+                        inputs=tgt_feat,
+                        seg_logits=pseudo_lbl,
+                        domain='tgt',
+                        prototypes=prototypes
+                    ) * 0.1
+                tgt_losses.update(tgt_aux_loss)
+        tgt_losses = add_prefix(tgt_losses, 'tgt')
+        tgt_loss, tgt_log_vars = self._parse_losses(tgt_losses)
+        log_vars.update(tgt_log_vars)
+        tgt_loss.backward()
 
         if self.local_iter % 4000 == 0 and self.train_cut:
             if not os.path.exists('cut_checkpoints'):
