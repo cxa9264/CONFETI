@@ -595,7 +595,7 @@ class DACS(UDADecorator):
         
         # Train on tgt images
 
-        if self.aux_heads is not None and self.local_iter > 3000:
+        if self.aux_heads is not None and self.local_iter > 3000 and self.train_cut:
             tgt_losses = {}
             tgt_feat = self.get_model().extract_feat(target_img)
             tgt_map = None
