@@ -47,11 +47,13 @@ Put the style transfer model checkpoints in `checkpoints` folder. The folder str
 
 ```
 checkpoints
-└── gta2cs_1080_512
+└── gta2cs_1080_512_2nd
     ├── latest_net_G.pth
     |── latest_net_D.pth
     └── latest_net_F.pth
 ```
+
+The model that we provide is the one that has already gone through the first round of training.
 
 
 ### Training
